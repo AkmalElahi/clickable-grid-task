@@ -20,9 +20,14 @@ for (let i = 0; i < ROWS; i++) {
       undoStack.push({
         row: i,
         col: j,
-        color: cell.style.backgroundColor,
+        color: color === 'green' ? '1' : '0',
       });
-      socket.emit('update', { row: i, col: j, color: color, undoStack });
+      socket.emit('update', {
+        row: i,
+        col: j,
+        color: color === 'green' ? '1' : '0',
+        undoStack,
+      });
     });
     row.push(cell);
     container.appendChild(cell);
@@ -41,7 +46,7 @@ socket.on('init', (data) => {
   for (let i = 0; i < ROWS; i++) {
     for (let j = 0; j < COLS; j++) {
       let cell = container.querySelector(`[data-row="${i}"][data-col="${j}"]`);
-      cell.style.backgroundColor = grid[i][j];
+      cell.style.backgroundColor = grid[i][j] === '1' ? 'green' : 'red';
     }
   }
 });
@@ -49,11 +54,12 @@ socket.on('init', (data) => {
 // Handle grid updates
 socket.on('update', (data) => {
   grid[data.row][data.col] = data.color;
+  const color = grid[data.row][data.col] === '1' ? 'green' : 'red';
   let cell = container.querySelector(
     `[data-row="${data.row}"][data-col="${data.col}"]`
   );
   undoStack = data.undoStack;
-  cell.style.backgroundColor = data.color;
+  cell.style.backgroundColor = color;
 });
 
 // Handle undo button
@@ -61,7 +67,7 @@ let undoButton = document.getElementById('undo-button');
 undoButton.addEventListener('click', () => {
   if (undoStack.length > 0) {
     let lastUpdate = undoStack.pop();
-    let color = lastUpdate.color === 'green' ? 'red' : 'green';
+    let color = lastUpdate.color === '1' ? 'red' : 'green';
     let cell = container.querySelector(
       `[data-row="${lastUpdate.row}"][data-col="${lastUpdate.col}"]`
     );
@@ -70,7 +76,7 @@ undoButton.addEventListener('click', () => {
     socket.emit('update', {
       row: lastUpdate.row,
       col: lastUpdate.col,
-      color,
+      color: lastUpdate.color,
       undoStack,
     });
   }

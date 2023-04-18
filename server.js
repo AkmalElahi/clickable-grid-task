@@ -1,6 +1,7 @@
 const express = require('express');
 const http = require('http');
 const socketIO = require('socket.io');
+const fs = require('fs');
 
 const app = express();
 const server = http.createServer(app);
@@ -11,11 +12,31 @@ const COLS = 80;
 let grid = [];
 let undoStack = [];
 
+function loadGridfromMemory() {
+  fs.readFile('data', { encoding: 'utf-8' }, (err, data) => {
+    if (!err) {
+      const dataArray = data.split(',');
+      const twoDArray = new Array(ROWS)
+        .fill()
+        .map(() => new Array(COLS).fill());
+      dataArray.forEach((value, index) => {
+        const row = Math.floor(index / COLS);
+        const col = index % COLS;
+        twoDArray[row][col] = value;
+      });
+
+      grid = twoDArray;
+    }
+  });
+}
+
+loadGridfromMemory();
+
 // Create grid
 for (let i = 0; i < ROWS; i++) {
   let row = [];
   for (let j = 0; j < COLS; j++) {
-    row.push('green');
+    row.push("1");
   }
   grid.push(row);
 }
@@ -34,9 +55,11 @@ io.on('connection', (socket) => {
   socket.on('update', (data) => {
     // Update grid with new data
     grid[data.row][data.col] = data.color;
+    fs.writeFile('data', grid.toString(), () => {
+      socket.broadcast.emit('update', data);
+      undoStack = data.undoStack;
+    });
     // Broadcast updated grid to all clients
-    socket.broadcast.emit('update', data);
-    undoStack = data.undoStack;
   });
 
   // Handle disconnections
